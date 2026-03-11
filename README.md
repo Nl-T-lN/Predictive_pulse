@@ -91,13 +91,25 @@ python eda.py                # Generate EDA plots
 python model_training.py     # Train model (saves logreg_model.pkl)
 ```
 
-### 3. Launch the App
+### 3. Launch the App Locally
 
 ```bash
 python app.py
 ```
 
 Open [http://localhost:5000](http://localhost:5000) in your browser.
+
+### 4. Deploy to Render (Cloud Hosting)
+
+This project is fully configured for a 1-click deploy to Render:
+
+1. Create a [Render](https://render.com) account and connect your GitHub
+2. Create a **New Web Service** and select this repository
+3. Set the following configuration:
+   - **Environment:** `Python 3`
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `gunicorn app:app`
+4. Deploy! Render will build the app and provide a live public URL.
 
 ---
 
