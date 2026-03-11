@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Clinical Hypertension Risk Assessment System - AI-powered blood pressure stage prediction for healthcare professionals">
+    <title>Hypertension Risk Assessment | Clinical Decision Support</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <!-- ─── HEADER ─── -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo-group">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="logo-text">HyperGuard<span class="logo-accent">AI</span></h1>
+                    <p class="logo-sub">Clinical Hypertension Risk Assessment</p>
+                </div>
+            </div>
+            <div class="header-badge">
+                <span class="badge-dot"></span>
+                <span>Clinical Decision Support</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <!-- ─── FLASH MESSAGES ─── -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-container">
+            {% for category, message in messages %}
+            <div class="flash-message flash-{{ category }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- ─── RESULT CARD (shown after prediction) ─── -->
+        {% if result %}
+        <section class="result-section" id="resultSection">
+            <div class="result-card" style="--stage-color: {{ result.color }}">
+                <div class="result-header">
+                    <div class="result-stage-badge" style="background: {{ result.color }}">
+                        {% if result.stage_num == 0 %}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28"
+                            height="28">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        {% elif result.stage_num == 3 %}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28"
+                            height="28">
+                            <path
+                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                            </path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        {% else %}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28"
+                            height="28">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        {% endif %}
+                    </div>
+                    <div class="result-title-block">
+                        <p class="result-priority" style="color: {{ result.color }}">{{ result.recommendation.priority
+                            }}</p>
+                        <h2 class="result-title">{{ result.recommendation.title }}</h2>
+                        <p class="result-desc">{{ result.recommendation.description }}</p>
+                    </div>
+                    <div class="confidence-ring">
+                        <svg viewBox="0 0 120 120" width="100" height="100">
+                            <circle cx="60" cy="60" r="50" fill="none" stroke="#e5e7eb" stroke-width="8" />
+                            <circle cx="60" cy="60" r="50" fill="none" stroke="{{ result.color }}" stroke-width="8"
+                                stroke-dasharray="{{ result.confidence * 3.14 }} 314" stroke-linecap="round"
+                                transform="rotate(-90 60 60)" class="confidence-circle" />
+                        </svg>
+                        <div class="confidence-text">
+                            <span class="confidence-num">{{ result.confidence }}%</span>
+                            <span class="confidence-label">Confidence</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-body">
+                    <div class="stage-indicator">
+                        {% for i in range(4) %}
+                        <div class="stage-dot {% if i == result.stage_num %}active{% endif %}"
+                            style="{% if i == result.stage_num %}background: {{ result.color }}; box-shadow: 0 0 12px {{ result.color }}{% endif %}">
+                        </div>
+                        {% if i < 3 %} <div class="stage-line {% if i < result.stage_num %}filled{% endif %}">
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="stage-labels">
+                    <span>Normal</span><span>Stage 1</span><span>Stage 2</span><span>Crisis</span>
+                </div>
+
+                <h3 class="actions-title">Recommended Actions</h3>
+                <ul class="actions-list">
+                    {% for action in result.recommendation.actions %}
+                    <li>
+                        <span class="action-bullet" style="background: {{ result.color }}"></span>
+                        {{ action }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- ─── ASSESSMENT FORM ─── -->
+        <section class="form-section">
+            <div class="section-header">
+                <h2>Patient Assessment Form</h2>
+                <p>Enter patient clinical parameters for hypertension risk evaluation</p>
+            </div>
+
+            <form method="POST" action="/predict" id="assessmentForm">
+                <!-- Demographics -->
+                <div class="form-group-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span>Demographics</span>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="Gender">Gender</label>
+                        <select name="Gender" id="Gender" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select gender</option>
+                            <option value="Male" {% if form_data and form_data.Gender=='Male' %}selected{% endif %}>Male
+                            </option>
+                            <option value="Female" {% if form_data and form_data.Gender=='Female' %}selected{% endif %}>
+                                Female</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="Age">Age Group</label>
+                        <select name="Age" id="Age" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select age group
+                            </option>
+                            <option value="18-34" {% if form_data and form_data.Age=='18-34' %}selected{% endif %}>18 -
+                                34 years</option>
+                            <option value="35-50" {% if form_data and form_data.Age=='35-50' %}selected{% endif %}>35 -
+                                50 years</option>
+                            <option value="51-64" {% if form_data and form_data.Age=='51-64' %}selected{% endif %}>51 -
+                                64 years</option>
+                            <option value="65+" {% if form_data and form_data.Age=='65+' %}selected{% endif %}>65+ years
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Medical History -->
+                <div class="form-group-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    <span>Medical History</span>
+                </div>
+                <div class="form-grid form-grid-3">
+                    <div class="form-field">
+                        <label for="History">Family History of Hypertension</label>
+                        <select name="History" id="History" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select</option>
+                            <option value="No" {% if form_data and form_data.History=='No' %}selected{% endif %}>No
+                            </option>
+                            <option value="Yes" {% if form_data and form_data.History=='Yes' %}selected{% endif %}>Yes
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="Patient">Current Patient Status</label>
+                        <select name="Patient" id="Patient" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select</option>
+                            <option value="No" {% if form_data and form_data.Patient=='No' %}selected{% endif %}>No
+                            </option>
+                            <option value="Yes" {% if form_data and form_data.Patient=='Yes' %}selected{% endif %}>Yes
+                            </option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="TakeMedication">Currently on Medication</label>
+                        <select name="TakeMedication" id="TakeMedication" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select</option>
+                            <option value="No" {% if form_data and form_data.TakeMedication=='No' %}selected{% endif %}>
+                                No</option>
+                            <option value="Yes" {% if form_data and form_data.TakeMedication=='Yes' %}selected{% endif
+                                %}>Yes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Symptoms -->
+                <div class="form-group-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                    </svg>
+                    <span>Symptoms Assessment</span>
+                </div>
+                <div class="form-grid form-grid-2">
+                    <div class="form-field">
+                        <label for="Severity">Symptom Severity</label>
+                        <select name="Severity" id="Severity" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select severity</option>
+                            <option value="Mild" {% if form_data and form_data.Severity=='Mild' %}selected{% endif %}>
+                                Mild</option>
+                            <option value="Moderate" {% if form_data and form_data.Severity=='Moderate' %}selected{%
+                                endif %}>Moderate</option>
+                            <option value="Sever" {% if form_data and form_data.Severity=='Sever' %}selected{% endif %}>
+                                Severe</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="BreathShortness">Shortness of Breath</label>
+                        <select name="BreathShortness" id="BreathShortness" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select</option>
+                            <option value="No" {% if form_data and form_data.BreathShortness=='No' %}selected{% endif
+                                %}>No</option>
+                            <option value="Yes" {% if form_data and form_data.BreathShortness=='Yes' %}selected{% endif
+                                %}>Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="VisualChanges">Visual Changes</label>
+                        <select name="VisualChanges" id="VisualChanges" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select</option>
+                            <option value="No" {% if form_data and form_data.VisualChanges=='No' %}selected{% endif %}>
+                                No</option>
+                            <option value="Yes" {% if form_data and form_data.VisualChanges=='Yes' %}selected{% endif
+                                %}>Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="NoseBleeding">Nosebleeds</label>
+                        <select name="NoseBleeding" id="NoseBleeding" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select</option>
+                            <option value="No" {% if form_data and form_data.NoseBleeding=='No' %}selected{% endif %}>No
+                            </option>
+                            <option value="Yes" {% if form_data and form_data.NoseBleeding=='Yes' %}selected{% endif %}>
+                                Yes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Vital Signs -->
+                <div class="form-group-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                        <line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                    <span>Vital Signs & Lifestyle</span>
+                </div>
+                <div class="form-grid form-grid-2">
+                    <div class="form-field">
+                        <label for="Whendiagnoused">Time Since Diagnosis</label>
+                        <select name="Whendiagnoused" id="Whendiagnoused" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select duration</option>
+                            <option value="<1 Year" {% if form_data and form_data.Whendiagnoused=='<1 Year' %}selected{%
+                                endif %}>Less than 1 Year</option>
+                            <option value="1 - 5 Years" {% if form_data and form_data.Whendiagnoused=='1 - 5 Years'
+                                %}selected{% endif %}>1 - 5 Years</option>
+                            <option value=">5 Years" {% if form_data and form_data.Whendiagnoused=='>5 Years'
+                                %}selected{% endif %}>More than 5 Years</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="Systolic">Systolic BP (mmHg)</label>
+                        <select name="Systolic" id="Systolic" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select range</option>
+                            <option value="100 - 110" {% if form_data and form_data.Systolic=='100 - 110' %}selected{%
+                                endif %}>100 - 110</option>
+                            <option value="111 - 120" {% if form_data and form_data.Systolic=='111 - 120' %}selected{%
+                                endif %}>111 - 120</option>
+                            <option value="121 - 130" {% if form_data and form_data.Systolic=='121 - 130' %}selected{%
+                                endif %}>121 - 130</option>
+                            <option value="130+" {% if form_data and form_data.Systolic=='130+' %}selected{% endif %}>
+                                130+</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="Diastolic">Diastolic BP (mmHg)</label>
+                        <select name="Diastolic" id="Diastolic" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select range</option>
+                            <option value="70 - 80" {% if form_data and form_data.Diastolic=='70 - 80' %}selected{%
+                                endif %}>70 - 80</option>
+                            <option value="81 - 90" {% if form_data and form_data.Diastolic=='81 - 90' %}selected{%
+                                endif %}>81 - 90</option>
+                            <option value="91 - 100" {% if form_data and form_data.Diastolic=='91 - 100' %}selected{%
+                                endif %}>91 - 100</option>
+                            <option value="100+" {% if form_data and form_data.Diastolic=='100+' %}selected{% endif %}>
+                                100+</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="ControlledDiet">Following Controlled Diet</label>
+                        <select name="ControlledDiet" id="ControlledDiet" required>
+                            <option value="" disabled {% if not form_data %}selected{% endif %}>Select</option>
+                            <option value="No" {% if form_data and form_data.ControlledDiet=='No' %}selected{% endif %}>
+                                No</option>
+                            <option value="Yes" {% if form_data and form_data.ControlledDiet=='Yes' %}selected{% endif
+                                %}>Yes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="form-submit">
+                    <button type="submit" id="submitBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"
+                            height="20">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                        </svg>
+                        Analyze Risk Assessment
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ─── FOOTER ─── -->
+        <footer class="app-footer">
+            <div class="footer-content">
+                <p class="disclaimer">This tool is intended for clinical decision support only. It does not replace
+                    professional medical judgment. Always consult with qualified healthcare professionals for diagnosis
+                    and treatment decisions.</p>
+
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        // Smooth scroll to results after prediction
+        {% if result %}
+        document.addEventListener('DOMContentLoaded', function () {
+            const resultSection = document.getElementById('resultSection');
+            if (resultSection) {
+                resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+        {% endif %}
+
+        // Form validation visual feedback
+        document.getElementById('assessmentForm').addEventListener('submit', function (e) {
+            const selects = this.querySelectorAll('select[required]');
+            let valid = true;
+            selects.forEach(function (sel) {
+                if (!sel.value) {
+                    sel.classList.add('field-error');
+                    valid = false;
+                } else {
+                    sel.classList.remove('field-error');
+                }
+            });
+            if (!valid) {
+                e.preventDefault();
+                alert('Please fill in all required fields before submitting.');
+            }
+        });
+
+        // Remove error highlight on change
+        document.querySelectorAll('select').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                this.classList.remove('field-error');
+                this.classList.add('field-filled');
+            });
+        });
+    </script>
+</body>
+
+</html>
